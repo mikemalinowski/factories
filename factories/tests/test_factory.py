@@ -83,7 +83,7 @@ class FactoryTests(unittest.TestCase):
         )
 
         # -- Remove the paths
-        reader.factory.unregister(
+        reader.factory.remove_path(
             reader.factory.paths()[0],
         )
 
@@ -120,7 +120,7 @@ class FactoryTests(unittest.TestCase):
             'test_plugins',
         )
 
-        reader.factory.register(additional_path)
+        reader.factory.add_path(additional_path)
 
         # -- Ensure we actually have some plugins
         self.assertEqual(
@@ -135,7 +135,7 @@ class FactoryTests(unittest.TestCase):
         )
 
         # -- Remove the paths
-        reader.factory.unregister(
+        reader.factory.remove_path(
             additional_path,
         )
 
@@ -184,7 +184,7 @@ class FactoryTests(unittest.TestCase):
         """
         reader = DataReader()
 
-        reader.factory.register(
+        reader.factory.add_path(
             os.path.join(
                 os.path.dirname(__file__),
                 'test_plugins',
@@ -237,7 +237,7 @@ class FactoryTests(unittest.TestCase):
         reader = DataReader()
 
         # -- Add our test plugins
-        reader.factory.register(
+        reader.factory.add_path(
             os.path.join(
                 os.path.dirname(__file__),
                 'test_plugins',
@@ -262,7 +262,7 @@ class FactoryTests(unittest.TestCase):
         reader = DataReader()
 
         # -- Add our test plugins
-        reader.factory.register(
+        reader.factory.add_path(
             os.path.join(
                 os.path.dirname(__file__),
                 'test_plugins',
@@ -333,7 +333,7 @@ class FactoryTests(unittest.TestCase):
         zoo = Zoo()
 
         # -- Add our test animals
-        zoo.factory.register(
+        zoo.factory.add_path(
             os.path.join(
                 os.path.dirname(__file__),
                 'test_plugins',
@@ -365,7 +365,7 @@ class FactoryTests(unittest.TestCase):
         reader = DataReader()
 
         # -- Add our test animals
-        reader.factory.register(
+        reader.factory.add_path(
             os.path.join(
                 os.path.dirname(__file__),
                 'test_plugins',
@@ -396,7 +396,7 @@ class FactoryTests(unittest.TestCase):
         reader = DataReader()
 
         # -- Add our test animals
-        reader.factory.register(
+        reader.factory.add_path(
             os.path.join(
                 os.path.dirname(__file__),
                 'test_plugins',
@@ -432,7 +432,7 @@ class FactoryTests(unittest.TestCase):
         """
         zoo = Zoo()
 
-        zoo.factory.register(
+        zoo.factory.add_path(
             os.path.join(
                 os.path.dirname(__file__),
                 'test_plugins',
@@ -452,7 +452,7 @@ class FactoryTests(unittest.TestCase):
         """
         zoo = Zoo()
 
-        zoo.factory.register(
+        zoo.factory.add_path(
             os.path.join(
                 os.path.dirname(__file__),
                 'test_plugins',
@@ -484,7 +484,7 @@ class FactoryTests(unittest.TestCase):
         try:
             zoo = Zoo()
 
-            zoo.factory.register(
+            zoo.factory.add_path(
                 non_package_location,
             )
 
@@ -507,7 +507,7 @@ class FactoryTests(unittest.TestCase):
         """
         zoo = Zoo()
 
-        zoo.factory.register(
+        zoo.factory.add_path(
             os.path.join(
                 os.path.dirname(__file__),
                 'test_plugins',

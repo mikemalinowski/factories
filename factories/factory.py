@@ -114,7 +114,7 @@ class Factory(object):
                  versioning_identifier=None):
         """
         :param abstract: The abstract class to utilise when searching for
-            plugins within the registered plugin locations
+            plugins within the add_pathed plugin locations
         :type abstract: Class
 
         :param paths: List of paths which should immediately be searched
@@ -147,17 +147,17 @@ class Factory(object):
         # -- Store a list of plugins
         self._plugins = list()
 
-        # -- Store all the paths we register regardless
+        # -- Store all the paths we add_path regardless
         # -- of what plugins they hold. We use a dictionary
         # -- for this so we can store the Mechanisms for each
         # -- path too
-        self._registered_paths = dict()
+        self._add_pathed_paths = dict()
 
         # -- Any paths we're giving during the init we should
-        # -- register
+        # -- add_path
         if paths and isinstance(paths, (list, tuple)):
             for path in paths:
-                self.register(path, mechanism=self.GUESS)
+                self.add_path(path, mechanism=self.GUESS)
 
     # --------------------------------------------------------------------------
     def __repr__(self):
@@ -325,11 +325,11 @@ class Factory(object):
         # -- need to check if it equates to the same file we're
         # -- looking at.
         if lone_name in sys.modules:
-            registered_path = sys.modules[lone_name].__file__.replace('\\', '/')
+            add_pathed_path = sys.modules[lone_name].__file__.replace('\\', '/')
 
             # -- If it matches we return it as we do not need to start
             # -- looking at __init__ structures
-            if filepath == registered_path:
+            if filepath == add_pathed_path:
                 return lone_name
 
         # -- Collage a list of parts which we can move between
@@ -386,7 +386,7 @@ class Factory(object):
     # --------------------------------------------------------------------------
     def clear(self):
         """
-        Clears the entire factory of plugins and registered paths.
+        Clears the entire factory of plugins and add_pathed paths.
         
         :return: None 
         
@@ -410,12 +410,12 @@ class Factory(object):
         """
         # -- Start clearing out the factory variables
         self._plugins = list()
-        self._registered_paths = dict()
+        self._add_pathed_paths = dict()
 
     # --------------------------------------------------------------------------
     def identifiers(self):
         """
-        Returns a list of plugin class names registered within the factory.
+        Returns a list of plugin class names add_pathed within the factory.
 
         The list of class names will be unique - therefore classes which share
         the same name will not appear twice.
@@ -441,7 +441,7 @@ class Factory(object):
     # --------------------------------------------------------------------------
     def paths(self):
         """
-        Returns all the paths registered in the factory
+        Returns all the paths add_pathed in the factory
         
         :return: List of paths 
         
@@ -458,7 +458,7 @@ class Factory(object):
         """
         # -- Cast the keys to a list to ensure compatibility
         # -- between python 2.x and 3.x
-        return list(self._registered_paths.keys())
+        return list(self._add_pathed_paths.keys())
 
     # --------------------------------------------------------------------------
     def plugins(self):
@@ -488,7 +488,7 @@ class Factory(object):
 
     # --------------------------------------------------------------------------
     # noinspection PyBroadException
-    def register(self, path, mechanism=0):
+    def add_path(self, path, mechanism=0):
         """
         Registers a search address with the factory. The factory will 
         immediately being searching recursively within this location for 
@@ -525,7 +525,7 @@ class Factory(object):
                     behaviour.
         :type mechanism: int
         
-        :return: Count of plugins registered
+        :return: Count of plugins add_pathed
         
         ..code-block:: python
         
@@ -545,16 +545,16 @@ class Factory(object):
             >>> 
             >>> # -- Register a path, allowing the factory to guess whether
             >>> # -- to import or do a direct load
-            >>> factory.register(
+            >>> factory.add_path(
             ...     os.path.dirname(factories.examples.reader.readers.__file__),
             ...     mechanism=factory.GUESS,
             ... )
         """
         # -- Regardless of what is found along the path we store the
         # -- fact that this path has been given to us
-        self._registered_paths[path] = mechanism
+        self._add_pathed_paths[path] = mechanism
 
-        # -- We return how many plugins have been registered
+        # -- We return how many plugins have been add_pathed
         # -- by this path, so we get the plugin count prior
         # -- to doing anything
         current_plugin_count = len(self._plugins)
@@ -646,20 +646,20 @@ class Factory(object):
     # --------------------------------------------------------------------------
     def reload(self):
         """
-        This will forget any registered plugins or information about plugins
+        This will forget any add_pathed plugins or information about plugins
         and perform a search over all the stored paths.
         
         :return: 
         """
         # -- Take a snapshot of the path data
-        path_data = self._registered_paths.copy()
+        path_data = self._add_pathed_paths.copy()
 
         # -- Start clearing out the factory variables
         self.clear()
 
-        # -- Now cycle over the path data and re-register them
+        # -- Now cycle over the path data and re-add_path them
         for path, mechanism in path_data.items():
-            self.register(
+            self.add_path(
                 path=path,
                 mechanism=mechanism,
             )
@@ -760,7 +760,7 @@ class Factory(object):
         return versions[version]
 
     # --------------------------------------------------------------------------
-    def unregister(self, path):
+    def remove_path(self, path):
         """
         This will remove a path from the path list. Any plugins from this 
         location will be removed.
@@ -783,30 +783,30 @@ class Factory(object):
             >>> # -- Print the fact that we have two plugins
             >>> print(len(reader.factory.plugins()))
             2
-            >>> # -- Unregister all our paths
+            >>> # -- Unadd_path all our paths
             >>> for path in reader.factory.paths():
-            ...     reader.factory.unregister(path)
+            ...     reader.factory.remove_path(path)
             >>> 
-            >>> # -- We now have no plugins - as unregistering a path
-            >>> # -- unregisters the plugins too
+            >>> # -- We now have no plugins - as remove_pathing a path
+            >>> # -- remove_paths the plugins too
             >>> print(len(reader.factory.plugins()))
             0
         """
         # -- Take a snapshot of the path data
-        path_data = self._registered_paths.copy()
+        path_data = self._add_pathed_paths.copy()
 
         # -- Start clearing out the factory variables
         self._plugins = list()
-        self._registered_paths = dict()
+        self._add_pathed_paths = dict()
 
-        # -- Now cycle over the path data and re-register them
+        # -- Now cycle over the path data and re-add_path them
         for original_path, mechanism in path_data.items():
 
             # -- Skip the path we're being asked to remove
             if os.path.abspath(original_path) == os.path.abspath(path):
                 continue
 
-            self.register(
+            self.add_path(
                 path=original_path,
                 mechanism=mechanism,
             )
