@@ -1,5 +1,14 @@
 # Factories
 
+
+## Installation
+You can either clone or download this github repo, or alternatively you can 
+install this via pip:
+
+```commandline
+pip install factories
+```
+
 ## Overview
 factories is a module which exposes a take on the Factory/Plugin design pattern. The idea behind this pattern is to be able to define a structure which your functionality sits within - allowing you to call that functionality without ever really knowing what it is doing.
 
