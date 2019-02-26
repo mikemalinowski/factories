@@ -47,12 +47,12 @@ We can now start adding paths to our factory. The factory will immediately searc
 
 ```python
 # -- Register with a hard coded path
-factory.register(
+factory.add_path(
     'c:/some/plugin/location'
 )
 
 # -- Register relatively
-factory.register(
+factory.add_path(
     os.path.join(
         os.path.dirname(__file__),
         'our_plugins',
