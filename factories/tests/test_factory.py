@@ -4,6 +4,7 @@ from factories.examples.reader import DataReader
 import os
 import sys
 import factories
+import factories.examples.zoo
 
 import unittest
 
@@ -517,6 +518,35 @@ class FactoryTests(unittest.TestCase):
 
         self.assertIsNotNone(
             zoo.factory.versions('koala'),
+        )
+
+    # --------------------------------------------------------------------------
+    def test_environment_variables(self):
+        """
+        Checks that paths defined in environment variables are added
+        
+        :return: 
+        """
+        # -- Check that the Tree Frog is not in the zoo by default
+        default_zoo = Zoo()
+
+        self.assertNotIn(
+            'Tree Frog',
+            default_zoo.factory.identifiers()
+        )
+
+        # -- Now add the environment variable
+        os.environ['FACTORIES_UNITTEST'] = os.path.join(
+            os.path.dirname(factories.examples.zoo.__file__),
+            'isolated',
+        )
+
+        # -- Instance another zoo - defining our environment variable
+        alternate_zoo = Zoo(envvar='FACTORIES_UNITTEST')
+
+        self.assertIn(
+            'Tree Frog',
+            alternate_zoo.factory.identifiers()
         )
 
 

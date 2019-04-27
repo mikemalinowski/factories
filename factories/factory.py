@@ -111,7 +111,8 @@ class Factory(object):
                  abstract,
                  paths=None,
                  plugin_identifier=None,
-                 versioning_identifier=None):
+                 versioning_identifier=None,
+                 envvar=None):
         """
         :param abstract: The abstract class to utilise when searching for
             plugins within the add_pathed plugin locations
@@ -138,6 +139,10 @@ class Factory(object):
             This should be the name of an attribute or method on the plugin
             which always evaluates to a float or integer.
         :type versioning_identifier: str
+        
+        :param envvar: Optional environment variable name. If defined this
+            will be inspected and split by ; and registered as paths.
+        :type envvar: str
         """
         # -- Store our incoming variables
         self._abstract = abstract
@@ -157,6 +162,11 @@ class Factory(object):
         # -- add_path
         if paths and isinstance(paths, (list, tuple)):
             for path in paths:
+                self.add_path(path, mechanism=self.GUESS)
+
+        # -- Now register any paths defined by environment variable
+        if envvar and envvar in os.environ:
+            for path in os.environ[envvar].split(';'):
                 self.add_path(path, mechanism=self.GUESS)
 
     # --------------------------------------------------------------------------
@@ -246,7 +256,6 @@ class Factory(object):
 
             elif _py_version == 2:
                 if filepath.endswith('.py'):
-
                     return imp.load_source(
                         filename + str(uuid.uuid4()),
                         filepath,
@@ -550,6 +559,11 @@ class Factory(object):
             ...     mechanism=factory.GUESS,
             ... )
         """
+
+        # -- Refuse none-type paths
+        if not path:
+            return 0
+
         # -- Regardless of what is found along the path we store the
         # -- fact that this path has been given to us
         self._add_pathed_paths[path] = mechanism
@@ -599,7 +613,6 @@ class Factory(object):
             if not module_to_inspect:
                 if mechanism == self.LOAD_SOURCE or mechanism == self.GUESS:
                     module_to_inspect = self._mechanism_load(filepath)
-
                     if module_to_inspect:
                         log.debug('Direct Load : %s' % filepath)
 

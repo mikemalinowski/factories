@@ -55,7 +55,7 @@ class Animal(object):
 class Zoo(object):
 
     # --------------------------------------------------------------------------
-    def __init__(self, climate=None):
+    def __init__(self, climate=None, *args, **kwargs):
 
         # -- Define the factory which will give us access to
         # -- the available animals
@@ -68,6 +68,8 @@ class Zoo(object):
                     'animals',
                 ),
             ],
+            *args,
+            **kwargs
         )
 
         # -- Randomly choose a climate
