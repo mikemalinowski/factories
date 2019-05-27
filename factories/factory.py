@@ -268,6 +268,12 @@ class Factory(object):
                     )
 
         except BaseException:
+            log.debug(
+                'Failed trying to direct load : %s (%s)' % (
+                    filepath,
+                    str(sys.exc_info()),
+                ),
+            )
             return None
 
     # --------------------------------------------------------------------------
