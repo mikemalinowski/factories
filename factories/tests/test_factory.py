@@ -549,6 +549,39 @@ class FactoryTests(unittest.TestCase):
             alternate_zoo.factory.identifiers()
         )
 
+    # --------------------------------------------------------------------------
+    def test_direct_plugin_registration(self):
+
+        # -- Create a zoo factory
+        zoo = Zoo()
+
+        # -- Remove all the plugin paths
+        zoo.factory.clear()
+
+        # -- Ensure there are no plugins in the zoo
+        self.assertEqual(
+            len(zoo.factory.plugins()),
+            0,
+        )
+
+        # -- Now register an animal in the zoo directly
+        from factories.examples.zoo.animals import carnivores
+
+        zoo.factory.register(carnivores.ArticFox)
+
+        # -- Test that we have one animal type in the zoo
+        self.assertEqual(
+            len(zoo.factory.plugins()),
+            1
+        )
+
+        # -- Test that we can instance our directly registered animal
+        artic_fox = zoo.factory.request('artic fox')()
+
+        self.assertEqual(
+            artic_fox.diet(),
+            'rabbits!',
+        )
 
 # ------------------------------------------------------------------------------
 if __name__ == '__main__':

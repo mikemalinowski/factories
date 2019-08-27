@@ -663,6 +663,29 @@ class Factory(object):
         return len(self._plugins) - current_plugin_count
 
     # --------------------------------------------------------------------------
+    def register(self, class_type):
+        """
+        Registers the given class type as a plugin for this factory. Note,
+        the class type being given must be inherited from the abstract.
+
+        This is particularly useful if you have direct access to the plugin
+        classes without needing to search disk locations.
+
+        :param class_type: The class type to add into the factories
+            repertoire
+        :type class_type: type
+
+        :return: True if the registration was successful.
+        """
+        if not inspect.isclass(class_type):
+            return False
+
+        if not issubclass(class_type, self._abstract):
+            return False
+
+        self._plugins.append(class_type)
+
+    # --------------------------------------------------------------------------
     def reload(self):
         """
         This will forget any add_pathed plugins or information about plugins
