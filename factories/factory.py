@@ -112,7 +112,9 @@ class Factory(object):
                  paths=None,
                  plugin_identifier=None,
                  versioning_identifier=None,
-                 envvar=None):
+                 envvar=None,
+                 mechanism=0,
+                 log_errors=True):
         """
         :param abstract: The abstract class to utilise when searching for
             plugins within the add_pathed plugin locations
@@ -139,7 +141,7 @@ class Factory(object):
             This should be the name of an attribute or method on the plugin
             which always evaluates to a float or integer.
         :type versioning_identifier: str
-        
+
         :param envvar: Optional environment variable name. If defined this
             will be inspected and split by ; and registered as paths.
         :type envvar: str
@@ -152,6 +154,9 @@ class Factory(object):
         # -- Store a list of plugins
         self._plugins = list()
 
+        # -- Store whether we should immediately log errors
+        self._log_errors = log_errors
+
         # -- Store all the paths we add_path regardless
         # -- of what plugins they hold. We use a dictionary
         # -- for this so we can store the Mechanisms for each
@@ -162,12 +167,12 @@ class Factory(object):
         # -- add_path
         if paths and isinstance(paths, (list, tuple)):
             for path in paths:
-                self.add_path(path, mechanism=self.GUESS)
+                self.add_path(path, mechanism=mechanism)
 
         # -- Now register any paths defined by environment variable
         if envvar and envvar in os.environ:
             for path in os.environ[envvar].split(';'):
-                self.add_path(path, mechanism=self.GUESS)
+                self.add_path(path, mechanism=mechanism)
 
     # --------------------------------------------------------------------------
     def __repr__(self):
@@ -177,6 +182,37 @@ class Factory(object):
         )
 
     # --------------------------------------------------------------------------
+    def _log(self, message, is_warning=False):
+        """
+        Internal logging logic to handle errors and warnings.
+
+        :param message:
+        :param is_warning:
+        :return:
+        """
+        # -- All factory logs include the abstract so it can be
+        # -- easily identified
+        message = '(%s) %s' % (
+            self._abstract.__name__,
+            message,
+        )
+
+        # -- Wrap this in a try, because we never want to fail because
+        # -- we cannot log a message for any reason.
+        try:
+            if is_warning and self._log_errors:
+                log.warning(message)
+
+            else:
+                log.debug(message)
+
+        except:
+            pass
+
+        # -- Log regardless if we're a warning and we're supposed
+        # -- to log errors
+
+    # --------------------------------------------------------------------------
     def _get_identifier(self, plugin):
         """
         Utilises the plugin identifier value to request the identifying
@@ -184,7 +220,7 @@ class Factory(object):
 
         :param plugin: Plugin to take the name from
 
-        :return: str 
+        :return: str
         """
         # -- Pull out the object from the plugin
         identifier = getattr(plugin, self._identifier)
@@ -204,7 +240,7 @@ class Factory(object):
 
         :param plugin: Plugin to take the version from
 
-        :return: int or float 
+        :return: int or float
         """
 
         # -- Pull out the object from the plugin
@@ -218,21 +254,20 @@ class Factory(object):
         return identifier
 
     # --------------------------------------------------------------------------
-    @classmethod
-    def _mechanism_load(cls, filepath):
+    def _mechanism_load(self, filepath):
         """
         Attemps to find any plugins on the given filepath using the loading
-        Mechanisms. This utilises import.load_source. 
+        Mechanisms. This utilises import.load_source.
 
-        As such, loading plugins through this Mechanisms has limitations in 
-        terms of not being able to utilise relative imports but it has the 
+        As such, loading plugins through this Mechanisms has limitations in
+        terms of not being able to utilise relative imports but it has the
         advantage of being able to load plugins from locations outside of
         the sys.path.
 
         :param filepath: Absolute filepath to the file to inspect
         :type filepath: str
 
-        :return: List of found plugins 
+        :return: List of found plugins
         """
         filename = os.path.splitext(
             os.path.basename(
@@ -268,7 +303,7 @@ class Factory(object):
                     )
 
         except BaseException:
-            log.debug(
+            self._log(
                 'Failed trying to direct load : %s (%s)' % (
                     filepath,
                     str(sys.exc_info()),
@@ -277,8 +312,7 @@ class Factory(object):
             return None
 
     # --------------------------------------------------------------------------
-    @classmethod
-    def _mechanism_import(cls, filepath):
+    def _mechanism_import(self, filepath):
         """
         Attemps to resolve a pre-existing package from the given file. If
         the package is found it is returned otherwise we return None.
@@ -286,15 +320,16 @@ class Factory(object):
         :param filepath: Absolute filepath to access
         :type filepath: str
 
-        :return: List of found plugins 
+        :return: List of found plugins
         """
         # -- Attempt to get the module name. This will return None
         # -- if the module does not exist
-        module_name = cls._module_address(filepath)
+        module_name = self._module_address(filepath)
 
         # -- If the module name exists in the sys.modules list
         # -- we return that module
         if module_name:
+            self._log('Found Module : %s' % module_name)
             return sys.modules[module_name]
 
         # -- To get here the module is invalid or does not exist
@@ -306,16 +341,16 @@ class Factory(object):
     def _module_address(cls, filepath):
         """
         This will take a file and attempt to build up a module address from
-        it by looking at the __init__ files around it. 
+        it by looking at the __init__ files around it.
 
-        The module address will only be returned if it is successfully 
+        The module address will only be returned if it is successfully
         validated in the sys.modules. If no address could be determined this
         will return None.
 
         :param filepath: Filepath to attempt to resolve
         :type filepath: str
 
-        :return: 
+        :return:
         """
         # -- Ensure we're working with consistent character
         # -- types in the path
@@ -402,23 +437,23 @@ class Factory(object):
     def clear(self):
         """
         Clears the entire factory of plugins and add_pathed paths.
-        
-        :return: None 
-        
+
+        :return: None
+
         ..code-block:: python
-        
+
         >>> from factories.examples.reader import DataReader
-        >>> 
+        >>>
         >>> # -- Instance a new factory
         >>> reader = DataReader()
-        >>> 
+        >>>
         >>> # -- Print how many plugins we have
         >>> print(len(reader.factory.plugins()))
         2
-        >>> 
+        >>>
         >>> # -- Clear the factory
         >>> reader.factory.clear()
-        >>> 
+        >>>
         >>> # -- We now have no plugins in the factory
         >>> print(len(reader.factory.plugins()))
         0
@@ -436,14 +471,14 @@ class Factory(object):
         the same name will not appear twice.
 
         :return: list(str, str, ...)
-        
+
         ..code-block:: python
-        
+
             >>> from factories.examples.reader import DataReader
-            >>> 
+            >>>
             >>> # -- Instance a new factory
             >>> reader = DataReader()
-            >>> 
+            >>>
             >>> # -- Print how many plugins we have
             >>> print(reader.factory.identifiers())
             set(['JSONReader', 'INIReader'])
@@ -457,16 +492,16 @@ class Factory(object):
     def paths(self):
         """
         Returns all the paths add_pathed in the factory
-        
-        :return: List of paths 
-        
+
+        :return: List of paths
+
         ..code-block:: python
-        
+
             >>> from factories.examples.reader import DataReader
-            >>> 
+            >>>
             >>> # -- Instance a new factory
             >>> reader = DataReader()
-            >>> 
+            >>>
             >>> # -- Print how many plugins we have
             >>> print(reader.factory.paths())
             {...factories/examples/reader/readers}
@@ -480,16 +515,16 @@ class Factory(object):
         """
         Returns a unique list of plugins. Where multiple versions are available
         the highest version will be given.
-        
+
         :return: list(class, class, ...)
-        
+
         ..code-block:: python
-        
+
             >>> from factories.examples.reader import DataReader
-            >>> 
+            >>>
             >>> # -- Instance a new factory
             >>> reader = DataReader()
-            >>> 
+            >>>
             >>> # -- Print how many plugins we have
             >>> for plugin in reader.factory.plugins():
             ...     print(plugin.__name__)
@@ -505,59 +540,59 @@ class Factory(object):
     # noinspection PyBroadException
     def add_path(self, path, mechanism=0):
         """
-        Registers a search address with the factory. The factory will 
-        immediately being searching recursively within this location for 
+        Registers a search address with the factory. The factory will
+        immediately being searching recursively within this location for
         any plugins.
 
         :param path: Absolute folder location
         :type path: str
-        
+
         :param mechanism: This allows you to specify the behaviour for
             loading plugin. Current options are:
-            
+
                 * IMPORTABLE:
-                    This mechanism should be used if your code resides within 
-                    already importable locations. This method is mandatory if 
-                    your code contains relative imports. Because this is 
-                    importing modules which are available on the sys.path the 
+                    This mechanism should be used if your code resides within
+                    already importable locations. This method is mandatory if
+                    your code contains relative imports. Because this is
+                    importing modules which are available on the sys.path the
                     class names will resolve nicely too.
-                
+
                 * LOAD_SOURCE
-                    This is useful when your plugin code is outside of the 
-                    interpreters sys.path. This mechanism will load the file 
-                    directly rather than import it from sys.modules. 
-                    This method has flexibility in terms of structure but 
-                    means you cannot utilise relative import paths within 
-                    your plugin. All loaded plugins using this module are 
+                    This is useful when your plugin code is outside of the
+                    interpreters sys.path. This mechanism will load the file
+                    directly rather than import it from sys.modules.
+                    This method has flexibility in terms of structure but
+                    means you cannot utilise relative import paths within
+                    your plugin. All loaded plugins using this module are
                     imported into a namespace defined through a uuid.
-                
+
                 * GUESS
-                    This is the default mechanism. When guessing the factory 
-                    will attempt to utilise the IMPORTABLE method first, and 
-                    only if the module is not accessible from within 
-                    sys.modules will it fall back to LOAD_SOURCE. This method 
-                    means you do not have to care too much, and is default 
+                    This is the default mechanism. When guessing the factory
+                    will attempt to utilise the IMPORTABLE method first, and
+                    only if the module is not accessible from within
+                    sys.modules will it fall back to LOAD_SOURCE. This method
+                    means you do not have to care too much, and is default
                     behaviour.
         :type mechanism: int
-        
+
         :return: Count of plugins add_pathed
-        
+
         ..code-block:: python
-        
+
             >>> import os
             >>> import factories
-            >>> 
+            >>>
             >>> # -- We import these for demonstration purposes. We will utilise
             >>> # -- the base class and the demonstration plugins
             >>> import factories.examples.reader
             >>> import factories.examples.reader.readers
-            >>> 
+            >>>
             >>> # -- Instance a factory, giving the abstract (so the factory
             >>> # -- knows what it can store)
             >>> factory = factories.Factory(
             ...     abstract = factories.examples.reader.ReaderPlugin,
             ... )
-            >>> 
+            >>>
             >>> # -- Register a path, allowing the factory to guess whether
             >>> # -- to import or do a direct load
             >>> factory.add_path(
@@ -605,14 +640,14 @@ class Factory(object):
             # -- Declare the variable we will ultimately inspect
             # -- for plugins
             module_to_inspect = None
-            
+
             # -- If we need to import - or guess, then we attempt to
             # -- get the package name
             if mechanism == self.IMPORTABLE or mechanism == self.GUESS:
                 module_to_inspect = self._mechanism_import(filepath)
 
                 if module_to_inspect:
-                    log.debug('Module Import : %s' % filepath)
+                    self._log('Module Import : %s' % filepath)
 
             # -- If we do not have a module, and we're using the loading
             # -- or guess Mechanisms
@@ -620,12 +655,18 @@ class Factory(object):
                 if mechanism == self.LOAD_SOURCE or mechanism == self.GUESS:
                     module_to_inspect = self._mechanism_load(filepath)
                     if module_to_inspect:
-                        log.debug('Direct Load : %s' % filepath)
+                        self._log('Direct Load : %s' % filepath)
 
             # -- If the module is invalid for any reason we do not
             # -- go further
             if not module_to_inspect:
-                log.debug('Could not import or load : %s' % filepath)
+                self._log(
+                    'Could not import or load : %s\n\t%s' % (
+                        filepath,
+                        str(sys.exc_info()),
+                    ),
+                    is_warning=True,
+                )
                 continue
 
             # -- We have no control over what we load, so we wrap
@@ -650,13 +691,13 @@ class Factory(object):
 
                         if issubclass(item, self._abstract):
                             self._plugins.append(item)
-                            log.debug('Loaded Plugin : %s' % item)
+                            self._log('Loaded Plugin : %s' % item)
 
             # -- We keep the exception type explitely broad as it
             # -- is completely out of our control what might be being
             # -- imported
             except BaseException:
-                log.debug('', exc_info=True)
+                self._log(str(sys.exc_info()), is_warning=True)
 
         # -- Return the amount of plugins which have
         # -- been loaded during this registration pass
@@ -690,8 +731,8 @@ class Factory(object):
         """
         This will forget any add_pathed plugins or information about plugins
         and perform a search over all the stored paths.
-        
-        :return: 
+
+        :return:
         """
         # -- Take a snapshot of the path data
         path_data = self._add_pathed_paths.copy()
@@ -714,7 +755,7 @@ class Factory(object):
         are multiple plugins with the same identifier) this can also be
         specified.
 
-        :param plugin_identifier: The identifying value of the plugin you 
+        :param plugin_identifier: The identifying value of the plugin you
             want to request
         :type plugin_identifier: str
 
@@ -724,38 +765,38 @@ class Factory(object):
         :type version: int
 
         :return: Plugin Class (or None)
-        
-        ..code-block:: 
-        
+
+        ..code-block::
+
             >>> from factories.examples.reader import DataReader
-            >>> 
+            >>>
             >>> # -- Instance a reader
             >>> reader = DataReader()
-            >>> 
+            >>>
             >>> # -- Get a plugin by identifier
             >>> plugin = reader.factory.request('JSONReader')
-            >>> 
+            >>>
             >>> print(plugin.__name__)
             JSONReader
-        
+
         Equaly you can specify the version of a plugin you want when
         you're dealing with factories which have the version identifier
         defined:
-        
+
         ..code-block:: python
-        
+
             >>> from factories.examples.reader import DataReader
-            >>> 
+            >>>
             >>> # -- Instance a reader
             >>> reader = DataReader()
-            >>> 
+            >>>
             >>> # -- Get a plugin by identifier
             >>> plugin = reader.factory.request('JSONReader', version=1)
-            >>> 
+            >>>
             >>> print(plugin.__name__)
             JSONReader
             >>> print(plugin.version)
-            1        
+            1
         """
         # -- Get all the plugins which match the given
         # -- identifier
@@ -768,7 +809,10 @@ class Factory(object):
         # -- If there are no matching plugins we have nothing
         # -- to return
         if not matching_plugins:
-            log.warning('No plugin matching %s' % plugin_identifier)
+            self._log(
+                'No plugin matching %s' % plugin_identifier,
+                is_warning=True,
+            )
             return None
 
         # -- If we have not been given a versioning identifier
@@ -790,11 +834,12 @@ class Factory(object):
         # -- If the requested version is not in the versions
         # -- available we return None
         if version not in versions:
-            log.warning(
+            self._log(
                 'Version %s of %s could not be found' % (
                     version,
                     plugin_identifier,
                 ),
+                is_warning=True,
             )
             return None
 
