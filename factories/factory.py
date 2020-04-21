@@ -355,8 +355,6 @@ class Factory(object):
         # -- Ensure we're working with consistent character
         # -- types in the path
         filepath = filepath.replace('\\', '/')
-        if 'unpacka' in filepath:
-            pass
 
         # -- Do an immediate test to check if this is a lone-python
         # -- package
@@ -645,6 +643,12 @@ class Factory(object):
             # -- get the package name
             if mechanism == self.IMPORTABLE or mechanism == self.GUESS:
                 module_to_inspect = self._mechanism_import(filepath)
+
+                # -- The plugin name may clash with a module name, so we
+                # -- need to protect against that and fall back to a direct
+                # -- load if that is the case
+                if module_to_inspect and module_to_inspect.__file__ != filepath:
+                    module_to_inspect = None
 
                 if module_to_inspect:
                     self._log('Module Import : %s' % filepath)
