@@ -63,6 +63,7 @@ __version__ = "1.2.0"
 
 from .factory import (
     Factory,
+    enable_debugging,
 )
 
 from .constants import (

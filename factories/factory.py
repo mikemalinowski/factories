@@ -17,13 +17,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+from . import constants
 from .constants import log
 
 import re
 import os
 import sys
 import uuid
+import time
 import inspect
+import logging
 
 # -- Our direct file loading depends on whether we're
 # -- in python 2 or python 3. Therefore we wrap these
@@ -36,6 +39,23 @@ try:
 except ImportError:
     import imp
     _py_version = 2
+
+
+# ------------------------------------------------------------------------------
+def enable_debugging(state=True):
+    """
+    Convenience function for enabling the debug log output of factories.
+
+    :param state: If True then debug log messages will be output.
+    :type state: bool
+
+    :return: None
+    """
+    if state:
+        log.setLevel(logging.DEBUG)
+
+    else:
+        log.setLevel(logging.INFO)
 
 
 # ------------------------------------------------------------------------------
@@ -176,7 +196,7 @@ class Factory(object):
 
     # --------------------------------------------------------------------------
     def __repr__(self):
-        return '[FACTORY - Identifier: %s, Plugin Count: %s]' % (
+        return '[FACTORY - Identifier: {}, Plugin Count: {}]'.format(
             self._identifier,
             len(self._plugins),
         )
@@ -192,7 +212,7 @@ class Factory(object):
         """
         # -- All factory logs include the abstract so it can be
         # -- easily identified
-        message = '(%s) %s' % (
+        message = '({}) {}'.format(
             self._abstract.__name__,
             message,
         )
@@ -304,7 +324,7 @@ class Factory(object):
 
         except BaseException:
             self._log(
-                'Failed trying to direct load : %s (%s)' % (
+                'Failed trying to direct load : {} ({})'.format(
                     filepath,
                     str(sys.exc_info()),
                 ),
@@ -329,7 +349,7 @@ class Factory(object):
         # -- If the module name exists in the sys.modules list
         # -- we return that module
         if module_name:
-            self._log('Found Module : %s' % module_name)
+            self._log('Found Module : {}'.format(module_name))
             return sys.modules[module_name]
 
         # -- To get here the module is invalid or does not exist
@@ -364,7 +384,7 @@ class Factory(object):
 
         # noinspection PyBroadException
         try:
-            exec('import %s' % lone_name)
+            exec('import {}'.format(lone_name))
 
         except BaseException:
             pass
@@ -415,7 +435,7 @@ class Factory(object):
 
                 # noinspection PyBroadException
                 try:
-                    exec('import %s' % package_name)
+                    exec('import {}'.format(package_name))
 
                 except BaseException:
                     pass
@@ -635,6 +655,9 @@ class Factory(object):
         # -- for plugins
         for filepath in filepaths:
 
+            # -- Track the time we started the load
+            start_time = time.time()
+
             # -- Declare the variable we will ultimately inspect
             # -- for plugins
             module_to_inspect = None
@@ -651,7 +674,7 @@ class Factory(object):
                     module_to_inspect = None
 
                 if module_to_inspect:
-                    self._log('Module Import : %s' % filepath)
+                    self._log('Module Import : {}'.format(filepath))
 
             # -- If we do not have a module, and we're using the loading
             # -- or guess Mechanisms
@@ -659,13 +682,13 @@ class Factory(object):
                 if mechanism == self.LOAD_SOURCE or mechanism == self.GUESS:
                     module_to_inspect = self._mechanism_load(filepath)
                     if module_to_inspect:
-                        self._log('Direct Load : %s' % filepath)
+                        self._log('Direct Load : {}'.format(filepath))
 
             # -- If the module is invalid for any reason we do not
             # -- go further
             if not module_to_inspect:
                 self._log(
-                    'Could not import or load : %s\n\t%s' % (
+                    'Could not import or load : {}\n\t{}'.format(
                         filepath,
                         str(sys.exc_info()),
                     ),
@@ -695,7 +718,17 @@ class Factory(object):
 
                         if issubclass(item, self._abstract):
                             self._plugins.append(item)
-                            self._log('Loaded Plugin : %s' % item)
+                            self._log('Loaded Plugin : {}'.format(item))
+
+                # -- Output the time it took to load this module
+                delta_time = time.time() - start_time
+                self._log(
+                    '{} took {} to load'.format(
+                        module_to_inspect,
+                        round(delta_time, 4),
+                    ),
+                    is_warning=False,
+                )
 
             # -- We keep the exception type explitely broad as it
             # -- is completely out of our control what might be being
@@ -814,7 +847,7 @@ class Factory(object):
         # -- to return
         if not matching_plugins:
             self._log(
-                'No plugin matching %s' % plugin_identifier,
+                'No plugin matching {}'.format(plugin_identifier),
                 is_warning=True,
             )
             return None
@@ -839,7 +872,7 @@ class Factory(object):
         # -- available we return None
         if version not in versions:
             self._log(
-                'Version %s of %s could not be found' % (
+                'Version {} of {} could not be found'.format(
                     version,
                     plugin_identifier,
                 ),
@@ -932,3 +965,13 @@ class Factory(object):
             for plugin in self._plugins
             if self._get_identifier(plugin) == identifier
         )
+
+
+# ------------------------------------------------------------------------------
+# -- Check if we need to enable debugging or not by default
+enable_debugging(
+    os.environ.get(
+        constants.DEBUG_ENVVAR,
+        False,
+    ),
+)
