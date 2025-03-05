@@ -1,6 +1,9 @@
+from inspect import isclass
+
 from factories.examples.zoo import Zoo
 from factories.examples.reader import DataReader
 
+import re
 import os
 import sys
 import factories
@@ -499,6 +502,129 @@ class FactoryTests(unittest.TestCase):
             if non_package_location in sys.path:
                 sys.path.remove(non_package_location)
 
+    def test_cannot_register_non_class(self):
+        """
+        Ensures we cannot register class instances
+        """
+        zoo = Zoo()
+
+        class X:
+            pass
+
+        result = zoo.factory.register(X())
+
+        self.assertFalse(result)
+
+    def test_cannot_register_non_abstract_class(self):
+        """
+        Ensures we cannot register class types that are not from the
+        abstract base class
+        """
+        zoo = Zoo()
+
+        class X:
+            pass
+
+        result = zoo.factory.register(X)
+
+        self.assertFalse(result)
+
+    def test_disabling_plugin(self):
+        zoo = Zoo()
+
+        self.assertIn(
+            "polar bear",
+            zoo.factory.identifiers(),
+        )
+
+        zoo.factory.set_disabled("polar bear", True)
+
+        self.assertNotIn(
+            "polar bear",
+            zoo.factory.identifiers(),
+        )
+
+    def test_can_access_disabled_plugins_forcefully(self):
+
+        zoo = Zoo()
+        zoo.factory.set_disabled("polar bear", True)
+
+        self.assertNotIn(
+            "polar bear",
+            zoo.factory.identifiers(),
+        )
+
+        self.assertIn(
+            "polar bear",
+            zoo.factory.identifiers(include_disabled=True),
+        )
+
+    def test_can_check_if_plugin_is_disabled(self):
+
+        zoo = Zoo()
+        zoo.factory.set_disabled("polar bear", True)
+
+        result = zoo.factory.is_disabled("polar bear")
+
+        self.assertTrue(result)
+
+    def test_can_enable_disabled_plugin(self):
+
+        zoo = Zoo()
+        zoo.factory.set_disabled("polar bear", True)
+
+        self.assertNotIn(
+            "polar bear",
+            zoo.factory.identifiers(),
+        )
+
+        zoo.factory.set_disabled("polar bear", False)
+
+        self.assertIn(
+            "polar bear",
+            zoo.factory.identifiers(include_disabled=True),
+        )
+
+    def test_can_instance_plugin(self):
+
+        zoo = Zoo()
+
+        polar_bear = zoo.factory.instance("polar bear")
+
+        self.assertFalse(
+            isclass(polar_bear),
+        )
+
+    def test_can_filter_with_regex(self):
+
+        zoo = Zoo(regex_filter=re.compile("foo"))
+
+        print(zoo.factory.identifiers())
+        self.assertEqual(
+            len(zoo.factory.identifiers()),
+            0
+        )
+
+    def test_can_filter_with_string(self):
+
+        zoo = Zoo(regex_filter="foo")
+
+        print(zoo.factory.identifiers())
+        self.assertEqual(
+            len(zoo.factory.identifiers()),
+            0
+        )
+
+    def test_factory_string_shows_plugin_count(self):
+
+        zoo = Zoo()
+
+        string_representation = str(zoo.factory)
+
+        self.assertIn(
+            "Plugin Count: 6",
+            string_representation,
+        )
     # --------------------------------------------------------------------------
     def test_direct_load_of_pyc(self):
         """

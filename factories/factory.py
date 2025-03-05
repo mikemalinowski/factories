@@ -27,18 +27,7 @@ import uuid
 import time
 import inspect
 import logging
-
-# -- Our direct file loading depends on whether we're
-# -- in python 2 or python 3. Therefore we wrap these
-# -- imports in a try except
-try:
-    # noinspection PyUnresolvedReferences
-    from importlib.machinery import SourceFileLoader
-    _py_version = 3
-
-except ImportError:
-    import imp
-    _py_version = 2
+from importlib.machinery import SourceFileLoader
 
 
 # ------------------------------------------------------------------------------
@@ -134,6 +123,7 @@ class Factory(object):
                  versioning_identifier=None,
                  envvar=None,
                  mechanism=0,
+                 regex_filter=None,
                  log_errors=True):
         """
         :param abstract: The abstract class to utilise when searching for
@@ -165,6 +155,11 @@ class Factory(object):
         :param envvar: Optional environment variable name. If defined this
             will be inspected and split by ; and registered as paths.
         :type envvar: str
+
+        :param regex_filter: Optional regular expression or string which will be tested
+            when about to parse a python file as a plugin
+        :type regex_filter: regular expression or str (which will be converted to a
+            regular expression).
         """
         # -- Store our incoming variables
         self._abstract = abstract
@@ -173,6 +168,17 @@ class Factory(object):
 
         # -- Store a list of plugins
         self._plugins = list()
+
+        # -- We store a list of plugins which are disabled
+        self._disabled = list()
+
+        # -- The regex filter can be given to force the factory
+        # -- to only attempt to load python files which match the given
+        # -- filter
+        self._regex_filter = regex_filter
+
+        if isinstance(self._regex_filter, str):
+            self._regex_filter = re.compile(self._regex_filter)
 
         # -- Store whether we should immediately log errors
         self._log_errors = log_errors
@@ -228,9 +234,6 @@ class Factory(object):
 
         except:
             pass
-
-        # -- Log regardless if we're a warning and we're supposed
-        # -- to log errors
 
     # --------------------------------------------------------------------------
     def _get_identifier(self, plugin):
@@ -303,24 +306,10 @@ class Factory(object):
         # -- different between python2 and python3, so we need to deal
         # -- with both cases.
         try:
-            if _py_version == 3:
-                return SourceFileLoader(
-                    module_name,
-                    filepath,
-                ).load_module()
-
-            elif _py_version == 2:
-                if filepath.endswith('.py'):
-                    return imp.load_source(
-                        filename + str(uuid.uuid4()),
-                        filepath,
-                    )
-
-                elif filepath.endswith('.pyc'):
-                    return imp.load_compiled(
-                        filename + str(uuid.uuid4()),
-                        filepath,
-                    )
+            return SourceFileLoader(
+                module_name,
+                filepath,
+            ).load_module()
 
         except BaseException:
             self._log(
@@ -431,7 +420,7 @@ class Factory(object):
                 # -- it. Note: We do not test the last characters, as
                 # -- this means the test works for .py, .pyc and .pyd files
                 if '.py' in package_name:
-                    package_name = os.path.splitext(package_name)[0]
+                    package_name = os.path.splitext(str(package_name))[0]
 
                 # noinspection PyBroadException
                 try:
@@ -481,12 +470,15 @@ class Factory(object):
         self._add_pathed_paths = dict()
 
     # --------------------------------------------------------------------------
-    def identifiers(self):
+    def identifiers(self, include_disabled=False):
         """
         Returns a list of plugin class names add_pathed within the factory.
 
         The list of class names will be unique - therefore classes which share
         the same name will not appear twice.
+
+        :param include_disabled: Include disabled plugins
+        :type include_disabled: bool
 
         :return: list(str, str, ...)
 
@@ -501,10 +493,17 @@ class Factory(object):
             >>> print(reader.factory.identifiers())
             set(['JSONReader', 'INIReader'])
         """
-        return {
-            self._get_identifier(plugin)
-            for plugin in self._plugins
-        }
+        results = []
+
+        for plugin in self._plugins:
+            identifier = self._get_identifier(plugin)
+
+            if not include_disabled and self.is_disabled(identifier):
+                continue
+
+            results.append(identifier)
+
+        return set(results)
 
     # --------------------------------------------------------------------------
     def paths(self):
@@ -529,7 +528,7 @@ class Factory(object):
         return list(self._add_pathed_paths.keys())
 
     # --------------------------------------------------------------------------
-    def plugins(self):
+    def plugins(self, include_disabled=False):
         """
         Returns a unique list of plugins. Where multiple versions are available
         the highest version will be given.
@@ -551,8 +550,14 @@ class Factory(object):
         """
         return [
             self.request(identifier)
-            for identifier in self.identifiers()
+            for identifier in self.identifiers(include_disabled)
         ]
+
+    def instance(self, identifier, version=None, *args, **kwargs):
+        """
+        This will return an instanced version of the plugin
+        """
+        return self.request(identifier, version)(*args, **kwargs)
 
     # --------------------------------------------------------------------------
     # noinspection PyBroadException
@@ -642,6 +647,11 @@ class Factory(object):
                 # -- skip any private or structural files, along with
                 # -- any files which are not py files
                 if not self._PY_CHECK.match(filename):
+                    continue
+
+                # -- If we're given a regex filter and this does not
+                # -- match then we skip it
+                if self._regex_filter and not self._regex_filter.match(filename):
                     continue
 
                 filepaths.append(
@@ -882,6 +892,30 @@ class Factory(object):
 
         # -- Finally we return the requested version
         return versions[version]
+
+    def set_disabled(self, identifier, state):
+        """
+        This will mark the given plugin as being disabled and will no longer
+        show by default as an available plugin unless explicitly requested.
+
+        :param identifier: Identifier for the plugin you want to change the
+            disabled state for
+        :type identifier: str
+
+        :param state: True if the plugin is being disabled, False
+        :type state: bool
+        """
+        if state and identifier not in self._disabled:
+            self._disabled.append(identifier)
+
+        if not state and identifier in self._disabled:
+            self._disabled.remove(identifier)
+
+    def is_disabled(self, identifier):
+        """
+        This will return whether the given plugin identifier has been disbaled
+        """
+        return identifier in self._disabled
 
     # --------------------------------------------------------------------------
     def remove_path(self, path):

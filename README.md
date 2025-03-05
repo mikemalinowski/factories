@@ -98,9 +98,9 @@ These examples live under ```factories.examples.reader``` and ```factories.examp
 
 ## Testing and Stability
 
-This module comes with a suite of unit tests which give a 94% coverage. It is therefere highly recommended that you run these tests prior to making any alterations, and again before putting forward fixes or contributions.
+This module comes with a suite of unit tests which give a 96% coverage. It is therefere highly recommended that you run these tests prior to making any alterations, and again before putting forward fixes or contributions.
 
-Whilst every effort goes into stability, given that this is a relatively new module it is always appreciated if you can communicate any bugs or issues to [mike@twisted.space](mike@twisted.space)
+Whilst every effort goes into stability, given that this is a relatively new module it is always appreciated if you can communicate any bugs or issues to [mike.malinowski@outlook.com](mike.malinowski@outlook.com)
 
 
 ## Compatability

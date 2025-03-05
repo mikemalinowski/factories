@@ -5,12 +5,13 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='factories',
-    version='1.2.1',
+    version='1.3.0',
     author='Mike Malinowski',
     author_email='mike.malinowski@outlook.com',
     description='A python package exposing the factory/plugin design pattern',
     long_description=long_description,
     long_description_content_type='text/markdown',
+    python_requires='>3.1.1',
     url='https://github.com/mikemalinowski/factories',
     packages=setuptools.find_packages(),
     classifiers=[

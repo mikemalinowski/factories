@@ -55,7 +55,7 @@ class Animal(object):
 class Zoo(object):
 
     # --------------------------------------------------------------------------
-    def __init__(self, climate=None, *args, **kwargs):
+    def __init__(self, climate=None, regex_filter=None, *args, **kwargs):
 
         # -- Define the factory which will give us access to
         # -- the available animals
@@ -68,6 +68,7 @@ class Zoo(object):
                     'animals',
                 ),
             ],
+            regex_filter=regex_filter,
             *args,
             **kwargs
         )
