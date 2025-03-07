@@ -12,6 +12,9 @@ import factories.examples.zoo
 import unittest
 
 
+class FlipResult:
+    Result = False
+
 # ------------------------------------------------------------------------------
 class FactoryTests(unittest.TestCase):
     """
@@ -707,6 +710,42 @@ class FactoryTests(unittest.TestCase):
         self.assertEqual(
             artic_fox.diet(),
             'rabbits!',
+        )
+
+    def test_paths_changed_signal(self):
+        FlipResult.Result = False
+        def foo():
+            FlipResult.Result = True
+
+        zoo = Zoo()
+        zoo.factory.paths_changed.connect(foo)
+        zoo.factory.add_path(
+            os.path.join(
+                os.path.dirname(__file__),
+                "alternate_plugins",
+            ),
+        )
+
+        self.assertTrue(
+            FlipResult.Result,
+        )
+
+    def test_plugins_changed_signal(self):
+        FlipResult.Result = False
+        def foo():
+            FlipResult.Result = True
+
+        zoo = Zoo()
+        zoo.factory.plugins_changed.connect(foo)
+        zoo.factory.add_path(
+            os.path.join(
+                os.path.dirname(__file__),
+                "alternate_plugins",
+            ),
+        )
+
+        self.assertTrue(
+            FlipResult.Result,
         )
 
 # ------------------------------------------------------------------------------

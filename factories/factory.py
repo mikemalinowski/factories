@@ -27,6 +27,7 @@ import uuid
 import time
 import inspect
 import logging
+import signalling
 from importlib.machinery import SourceFileLoader
 
 
@@ -165,6 +166,12 @@ class Factory(object):
         self._abstract = abstract
         self._identifier = plugin_identifier or '__name__'
         self._version = versioning_identifier
+
+        # -- Expose some signals to allow higher level systems
+        # -- to bind into events within the factory
+        self.changed = signalling.WeakSignal()
+        self.paths_changed = signalling.WeakSignal()
+        self.plugins_changed = signalling.WeakSignal()
 
         # -- Store a list of plugins
         self._plugins = list()
@@ -469,6 +476,11 @@ class Factory(object):
         self._plugins = list()
         self._add_pathed_paths = dict()
 
+        # -- Emit our change signals
+        self.paths_changed.emit()
+        self.plugins_changed.emit()
+        self.changed.emit()
+
     # --------------------------------------------------------------------------
     def identifiers(self, include_disabled=False):
         """
@@ -632,6 +644,9 @@ class Factory(object):
         # -- fact that this path has been given to us
         self._add_pathed_paths[path] = mechanism
 
+        # -- Emit the fact that our paths have changed
+        self.paths_changed.emit()
+
         # -- We return how many plugins have been add_pathed
         # -- by this path, so we get the plugin count prior
         # -- to doing anything
@@ -730,6 +745,7 @@ class Factory(object):
                             self._plugins.append(item)
                             self._log('Loaded Plugin : {}'.format(item))
 
+
                 # -- Output the time it took to load this module
                 delta_time = time.time() - start_time
                 self._log(
@@ -746,9 +762,16 @@ class Factory(object):
             except BaseException:
                 self._log(str(sys.exc_info()), is_warning=True)
 
+        plugin_change = len(self._plugins) - current_plugin_count
+
+        # -- Emit the fact that our plugins have changed if they
+        # -- ahve done sone
+        if plugin_change:
+            self.plugins_changed.emit()
+
         # -- Return the amount of plugins which have
         # -- been loaded during this registration pass
-        return len(self._plugins) - current_plugin_count
+        return
 
     # --------------------------------------------------------------------------
     def register(self, class_type):
@@ -907,9 +930,11 @@ class Factory(object):
         """
         if state and identifier not in self._disabled:
             self._disabled.append(identifier)
+            self.plugins_changed.emit()
 
         if not state and identifier in self._disabled:
             self._disabled.remove(identifier)
+            self.plugins_changed.emit()
 
     def is_disabled(self, identifier):
         """
