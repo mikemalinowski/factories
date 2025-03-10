@@ -1025,6 +1025,48 @@ class Factory(object):
             if self._get_identifier(plugin) == identifier
         )
 
+    def serialise(self):
+        """
+        This will serialise down the factories state into a dictionarly. This is
+        particularly useful if you want to store the factory state in a persistent
+        way.
+        """
+        return dict(
+            paths=self.paths(),
+            disabled_identifiers=[
+                identifier
+                for identifier in self.identifiers(include_disabled=True)
+                if self.is_disabled(identifier)
+            ],
+            identifier=self._identifier,
+        )
+
+    def restore_from(self, data):
+        """
+        This will reset the factory and populate it based on a serialised
+        data state.
+        """
+        # -- Validate the data
+        if "paths" not in data:
+            raise KeyError("paths are expected")
+
+        if "disabled_identifiers" not in data:
+            raise KeyError("disabled_identifiers are expected")
+
+        if "identifier" not in data:
+            raise KeyError("identifier is expected")
+
+        self.clear()
+
+        self._identifier = data["identifier"]
+
+        for path in data["paths"]:
+            self.add_path(path=path)
+
+        for disabled_identifier in data["disabled_identifiers"]:
+            if disabled_identifier in self.identifiers():
+                self.set_disabled(disabled_identifier, True)
+
 
 # ------------------------------------------------------------------------------
 # -- Check if we need to enable debugging or not by default

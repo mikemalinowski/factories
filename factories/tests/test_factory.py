@@ -1,6 +1,7 @@
 from inspect import isclass
 
 from factories.examples.zoo import Zoo
+from factories.examples.zoo import Animal
 from factories.examples.reader import DataReader
 
 import re
@@ -602,7 +603,6 @@ class FactoryTests(unittest.TestCase):
 
         zoo = Zoo(regex_filter=re.compile("foo"))
 
-        print(zoo.factory.identifiers())
         self.assertEqual(
             len(zoo.factory.identifiers()),
             0
@@ -612,7 +612,6 @@ class FactoryTests(unittest.TestCase):
 
         zoo = Zoo(regex_filter="foo")
 
-        print(zoo.factory.identifiers())
         self.assertEqual(
             len(zoo.factory.identifiers()),
             0
@@ -747,6 +746,77 @@ class FactoryTests(unittest.TestCase):
         self.assertTrue(
             FlipResult.Result,
         )
+
+    def test_serialisation(self):
+
+        zoo = Zoo()
+        serialised_data = zoo.factory.serialise()
+
+        self.assertEqual(
+            len(serialised_data["paths"]),
+            1,
+        )
+        self.assertEqual(
+            serialised_data["disabled_identifiers"],
+            [],
+        )
+
+        self.assertEqual(
+            serialised_data["identifier"],
+            "species"
+        )
+
+        zoo.factory.set_disabled("polar bear", True)
+        serialised_data = zoo.factory.serialise()
+
+        self.assertEqual(
+            serialised_data["disabled_identifiers"],
+            ["polar bear"],
+        )
+
+    def test_restoring(self):
+
+        zoo = Zoo()
+        zoo.factory.set_disabled("polar bear", True)
+        serialised_data = zoo.factory.serialise()
+
+        new_factory = factories.Factory(
+            abstract=Animal,
+        )
+        new_factory.restore_from(serialised_data)
+
+        self.assertEqual(
+            len(new_factory.paths()),
+            1,
+        )
+
+        self.assertTrue(
+            new_factory.is_disabled("polar bear"),
+        )
+
+    def test_missing_restoration_data(self):
+
+        keys = [
+            "paths",
+            "disabled_identifiers",
+            "identifier",
+        ]
+
+        for key in keys:
+            zoo = Zoo()
+            serialised_data = zoo.factory.serialise()
+
+            del serialised_data[key]
+
+            try:
+                new_factory = factories.Factory(
+                    abstract=Animal,
+                )
+                new_factory.restore_from(serialised_data)
+
+                raise Exception("Did not fail with missing %s" % key)
+            except KeyError:
+                pass
 
 # ------------------------------------------------------------------------------
 if __name__ == '__main__':

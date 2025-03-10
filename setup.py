@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='factories',
-    version='1.4.0',
+    version='1.4.1',
     author='Mike Malinowski',
     author_email='mike.malinowski@outlook.com',
     description='A python package exposing the factory/plugin design pattern',

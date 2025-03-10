@@ -59,7 +59,7 @@ https://www.gdcvault.com/play/1025427/A-Practical-Approach-to-Developing
 __author__ = "Michael Malinowski"
 __copyright__ = "Copyright (C) 2019 Michael Malinowski"
 __license__ = "MIT"
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 
 from .factory import (
     Factory,
